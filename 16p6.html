@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16パズル</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 24px;
+            margin-top: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #puzzle {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            width: 300px;
+            margin: 20px auto;
+        }
+
+        .tile {
+            width: 70px;
+            height: 70px;
+            background-color: #3498db;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 6px 0 #2980b9, 0 8px 10px rgba(0,0,0,0.15);
+            transition: all 0.1s ease;
+        }
+
+        .tile:active {
+            box-shadow: 0 2px 0 #2980b9, 0 3px 6px rgba(0,0,0,0.1);
+            transform: translateY(4px);
+        }
+
+        .empty {
+            background-color: white;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #startButton {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        #startButton:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        #startButton:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #message {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>文字を並び替えてお宝動画をみよう。</h1>
+    <div id="puzzle"></div>
+    <button id="startButton">スタート</button>
+    <div id="message"></div>
+    <audio id="clickSound" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" preload="auto"></audio>
+    <audio id="tileSound" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" preload="auto"></audio>
+    <script>
+        const puzzle = document.getElementById('puzzle');
+        const startButton = document.getElementById('startButton');
+        const messageDiv = document.getElementById('message');
+        const clickSound = document.getElementById('clickSound');
+        const tileSound = document.getElementById('tileSound');
+        const characters = ['吉', '美', 'の', '夏', 'は', '小', '学', '校', 'か', 'ら', '始', 'ま', 'る', '。', ''];
+        let tiles = Array.from({length: 16}, (_, i) => i);
+        let gameStarted = false;
+
+        function createPuzzle() {
+            puzzle.innerHTML = '';
+            tiles.forEach((tile, index) => {
+                const tileElement = document.createElement('div');
+                tileElement.classList.add('tile');
+                if (tile === 15) {
+                    tileElement.classList.add('empty');
+                } else {
+                    tileElement.textContent = characters[tile];
+                }
+                tileElement.addEventListener('click', () => moveTile(index));
+                puzzle.appendChild(tileElement);
+            });
+        }
+
+        function moveTile(index) {
+            if (!gameStarted) return;
+            const emptyIndex = tiles.indexOf(15);
+            if (isAdjacent(index, emptyIndex)) {
+                animateTileMove(index, emptyIndex);
+            }
+        }
+
+        function animateTileMove(fromIndex, toIndex) {
+            const tileElements = document.querySelectorAll('.tile');
+            const fromTile = tileElements[fromIndex];
+            const toTile = tileElements[toIndex];
+            const fromRect = fromTile.getBoundingClientRect();
+            const toRect = toTile.getBoundingClientRect();
+            const deltaX = toRect.left - fromRect.left;
+            const deltaY = toRect.top - fromRect.top;
+
+            fromTile.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            fromTile.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+            setTimeout(() => {
+                tileSound.play();
+                [tiles[fromIndex], tiles[toIndex]] = [tiles[toIndex], tiles[fromIndex]];
+                createPuzzle();
+                checkWin();
+            }, 300);
+        }
+
+        function isAdjacent(index1, index2) {
+            const row1 = Math.floor(index1 / 4);
+            const col1 = index1 % 4;
+            const row2 = Math.floor(index2 / 4);
+            const col2 = index2 % 4;
+            return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
+        }
+
+        function shuffleTiles() {
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+            createPuzzle();
+        }
+
+        function checkWin() {
+            const win = tiles.every((tile, index) => tile === index);
+            if (win) {
+                gameWon();
+            }
+        }
+
+        function gameWon() {
+            gameStarted = false;
+            messageDiv.textContent = 'おめでとう。鍵が開きました。では動画をごらんください。';
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = 'https://youtu.be/BMQTipnhKec';
+            }, 5000);
+        }
+
+        startButton.addEventListener('click', () => {
+            clickSound.play();
+            shuffleTiles();
+            gameStarted = true;
+            startButton.style.display = 'none';
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'm') {
+                gameWon();
+            }
+        });
+
+        createPuzzle();
+    </script>
+</body>
+</html>
